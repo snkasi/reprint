@@ -146,21 +146,24 @@ def print_multi_line(content, force_single_line, flush=True):
 
     content = copy.deepcopy(content)
 
-    content = content[:title_msg_lines] + content[refresh_lines:]
-    lines = lines_of_content(content, columns)
-    if force_single_line is False and lines > rows - 1 :
-        overflow_flag = True
-        for boundary in range(title_msg_lines + 1, len(content) + 1):
-            if lines_of_content(content[:title_msg_lines] + content[boundary:], columns) <= rows - 1:
-                for line in content[title_msg_lines:boundary]:
-                    _line = preprocess(line)
-                    print_line(_line, columns, force_single_line)
-                content = content[:title_msg_lines] + content[boundary:]
-                lines = lines_of_content(content, columns)
-                refresh_lines += boundary - title_msg_lines
-                break
-    elif force_single_line is True and len(content) > rows:
-        overflow_flag = True
+    if isinstance(content, list):
+        content = content[:title_msg_lines] + content[refresh_lines:]
+        lines = lines_of_content(content, columns)
+        if force_single_line is False and lines > rows - 1 :
+            overflow_flag = True
+            for boundary in range(title_msg_lines + 1, len(content) + 1):
+                if lines_of_content(content[:title_msg_lines] + content[boundary:], columns) <= rows - 1:
+                    for line in content[title_msg_lines:boundary]:
+                        _line = preprocess(line)
+                        print_line(_line, columns, force_single_line)
+                    content = content[:title_msg_lines] + content[boundary:]
+                    lines = lines_of_content(content, columns)
+                    refresh_lines += boundary - title_msg_lines
+                    break
+        elif force_single_line is True and len(content) > rows:
+            overflow_flag = True
+    else:
+        lines = lines_of_content(content, columns)
 
     
 
