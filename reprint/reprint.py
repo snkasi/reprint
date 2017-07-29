@@ -19,6 +19,8 @@ else:
 last_output_lines = 0
 overflow_flag = False
 is_atty = sys.stdout.isatty()
+title_msg_lines = 0
+refresh_lines = 0
 
 magic_char = "\x1b[1A"
 
@@ -67,6 +69,7 @@ def preprocess(content):
     return ' ' + _content
 
 
+
 def cut_off_at(content, width):
     if line_width(content) > width:
         now = content[:width]
@@ -83,7 +86,7 @@ def print_line(content, columns, force_single_line):
     output = "{content}{padding}".format(content=content, padding=padding)
     if force_single_line:
         output = cut_off_at(output, columns)
-    print(output, end='')
+    print(output, end="")
     sys.stdout.flush()
 
 
@@ -117,11 +120,13 @@ def lines_of_content(content, width):
     return int(result)
 
 
-def print_multi_line(content, force_single_line):
+def print_multi_line(content, force_single_line, flush=True):
 
     global last_output_lines
     global overflow_flag
     global is_atty
+    global title_msg_lines
+    global refresh_lines
 
     if isinstance(content, list):
         content = list(content)
@@ -137,14 +142,27 @@ def print_multi_line(content, force_single_line):
         raise TypeError("Excepting types: list, dict. Got: {}".format(type(content)))
         return
 
+    columns, rows = get_terminal_size()
+
     content = copy.deepcopy(content)
 
-    columns, rows = get_terminal_size()
+    content = content[:title_msg_lines] + content[refresh_lines:]
     lines = lines_of_content(content, columns)
-    if force_single_line is False and lines > rows:
+    if force_single_line is False and lines > rows - 1 :
         overflow_flag = True
+        for boundary in range(title_msg_lines + 1, len(content) + 1):
+            if lines_of_content(content[:title_msg_lines] + content[boundary:], columns) <= rows - 1:
+                for line in content[title_msg_lines:boundary]:
+                    _line = preprocess(line)
+                    print_line(_line, columns, force_single_line)
+                content = content[:title_msg_lines] + content[boundary:]
+                lines = lines_of_content(content, columns)
+                refresh_lines += boundary - title_msg_lines
+                break
     elif force_single_line is True and len(content) > rows:
         overflow_flag = True
+
+    
 
     if isinstance(content, list):
         for line in content:
@@ -163,7 +181,8 @@ def print_multi_line(content, force_single_line):
 
     # 回到初始输出位置
     # back to the origin pos
-    print(magic_char * max(last_output_lines, lines), end="")
+    if flush is True:
+        print(magic_char * max(last_output_lines, lines), end="")
     sys.stdout.flush()
     last_output_lines = lines
 
@@ -195,6 +214,17 @@ class output:
                 else:
                     self.parent.refresh(int(time.time()*1000), forced=False)
 
+        def append(self, value, roll=True):
+            global is_atty
+            global title_msg_lines
+            global refresh_lines
+            with self.lock:
+                super(output.SignalList, self).append(value)
+                if not roll:
+                    title_msg_lines += 1
+                    refresh_lines += 1
+                self.parent.refresh(int(time.time()*1000), forced=False)
+
     class SignalDict(dict):
 
         def __init__(self, parent, obj):
@@ -223,6 +253,8 @@ class output:
         no_warning and print("All reprint warning diabled.")
 
         global is_atty
+        global title_msg_lines
+        global refresh_lines
         # reprint does not work in the IDLE terminal, and any other environment that can't get terminal_size
         if is_atty and not all(get_terminal_size()):
             if not no_warning:
@@ -235,6 +267,8 @@ class output:
 
         if output_type == "list":
             self.warped_obj = output.SignalList(self, [''] * initial_len)
+            title_msg_lines = initial_len
+            refresh_lines = initial_len
         elif output_type == "dict":
             self.warped_obj = output.SignalDict(self, {})
 
@@ -242,9 +276,9 @@ class output:
         self.force_single_line = force_single_line
         self._last_update = int(time.time()*1000)
 
-    def refresh(self, new_time=0, forced=True):
+    def refresh(self, new_time=0, forced=True, flush=True):
         if new_time - self._last_update >= self.interval or forced:
-            print_multi_line(self.warped_obj, self.force_single_line)
+            print_multi_line(self.warped_obj, self.force_single_line, flush=flush)
             self._last_update = new_time
 
     def __enter__(self):
@@ -257,19 +291,5 @@ class output:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         global is_atty
-
-        self.refresh(forced=True)
-        if is_atty:
-            columns, _ = get_terminal_size()
-            if self.force_single_line:
-                print('\n' * len(self.warped_obj), end="")
-            else:
-                print('\n' * lines_of_content(self.warped_obj, columns), end="")
-            global last_output_lines
-            global overflow_flag
-            last_output_lines = 0
-            if overflow_flag:
-                if not self.no_warning:
-                    print("Detected that the lines of output has been exceeded the height of terminal windows, which \
-                    caused the former output remained and keep adding new lines.")
-                    print("检测到输出过程中, 输出行数曾大于命令行窗口行数, 这会导致输出清除不完整, 而使输出不停增长。请注意控制输出行数。")
+        self.refresh(forced=True, flush=False)
+        print(" ", end="")
