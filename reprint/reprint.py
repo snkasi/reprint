@@ -20,7 +20,7 @@ last_output_lines = 0
 overflow_flag = False
 is_atty = sys.stdout.isatty()
 
-magic_char = "\033[F"
+magic_char = "\x1b[1A"
 
 widths = [
     (126,    1), (159,    0), (687,     1), (710,   0), (711,   1),
@@ -64,7 +64,7 @@ def preprocess(content):
         _content = str(content)
 
     _content = re.sub(r'\r|\t|\n', ' ', _content)
-    return _content
+    return ' ' + _content
 
 
 def cut_off_at(content, width):
@@ -146,10 +146,6 @@ def print_multi_line(content, force_single_line):
     elif force_single_line is True and len(content) > rows:
         overflow_flag = True
 
-    # 确保初始输出位置是位于最左处的
-    # to make sure the cursor is at the left most
-    print("\b" * columns, end="")
-
     if isinstance(content, list):
         for line in content:
             _line = preprocess(line)
@@ -167,7 +163,7 @@ def print_multi_line(content, force_single_line):
 
     # 回到初始输出位置
     # back to the origin pos
-    print(magic_char * (max(last_output_lines, lines)-1), end="")
+    print(magic_char * max(last_output_lines, lines), end="")
     sys.stdout.flush()
     last_output_lines = lines
 
