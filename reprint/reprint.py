@@ -95,6 +95,7 @@ def line_width(line):
     计算本行在输出到命令行后所占的宽度
     calculate the width of output in terminal
     """
+    line = re.sub(r'\033\[.*?m', '', line)
     if six.PY2:
         assert isinstance(line, unicode)
     result = sum(map(get_char_width, line))
