@@ -4,6 +4,7 @@ from __future__ import print_function, division, unicode_literals
 import re
 import sys
 import time
+import copy
 import threading
 from math import ceil
 
@@ -122,16 +123,21 @@ def print_multi_line(content, force_single_line):
     global overflow_flag
     global is_atty
 
-    if not is_atty:
-        if isinstance(content, list):
+    if isinstance(content, list):
+        content = list(content)
+        if not is_atty:
             for line in content:
                 print(line)
-        elif isinstance(content, dict):
+    elif isinstance(content, dict):
+        content = dict(content)
+        if not is_atty:
             for k, v in sorted(content.items(), key=lambda x: x[0]):
                 print("{}: {}".format(k, v))
-        else:
-            raise TypeError("Excepting types: list, dict. Got: {}".format(type(content)))
+    else:
+        raise TypeError("Excepting types: list, dict. Got: {}".format(type(content)))
         return
+
+    content = copy.deepcopy(content)
 
     columns, rows = get_terminal_size()
     lines = lines_of_content(content, columns)
