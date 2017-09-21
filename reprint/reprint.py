@@ -35,6 +35,7 @@ widths = [
     (120831, 1), (262141, 2), (1114109, 1),
 ]
 
+
 def get_char_width(char):
     global widths
     o = ord(char)
@@ -67,7 +68,7 @@ def preprocess(content):
 
     _content = re.sub(r'\r|\t|\n', ' ', _content)
     return ' ' + _content
-
+    # return _content
 
 
 def cut_off_at(content, width):
@@ -79,6 +80,7 @@ def cut_off_at(content, width):
         return now
     else:
         return content
+
 
 def print_line(content, columns, force_single_line):
 
@@ -140,7 +142,8 @@ def print_multi_line(content, force_single_line, flush=True):
             for k, v in sorted(content.items(), key=lambda x: x[0]):
                 print("{}: {}".format(k, v))
     else:
-        raise TypeError("Excepting types: list, dict. Got: {}".format(type(content)))
+        raise TypeError(
+            "Excepting types: list, dict. Got: {}".format(type(content)))
         return
 
     columns, rows = get_terminal_size()
@@ -150,7 +153,7 @@ def print_multi_line(content, force_single_line, flush=True):
     if isinstance(content, list):
         content = content[:title_msg_lines] + content[refresh_lines:]
         lines = lines_of_content(content, columns)
-        if force_single_line is False and lines > rows - 1 :
+        if force_single_line is False and lines > rows - 1:
             overflow_flag = True
             for boundary in range(title_msg_lines + 1, len(content) + 1):
                 if lines_of_content(content[:title_msg_lines] + content[boundary:], columns) <= rows - 1:
@@ -166,8 +169,6 @@ def print_multi_line(content, force_single_line, flush=True):
     else:
         lines = lines_of_content(content, columns)
 
-    
-
     if isinstance(content, list):
         for line in content:
             _line = preprocess(line)
@@ -177,7 +178,8 @@ def print_multi_line(content, force_single_line, flush=True):
             _k, _v = map(preprocess, (k, v))
             print_line("{}: {}".format(_k, _v), columns, force_single_line)
     else:
-        raise TypeError("Excepting types: list, dict. Got: {}".format(type(content)))
+        raise TypeError(
+            "Excepting types: list, dict. Got: {}".format(type(content)))
 
     # 输出额外的空行来清除上一次输出的剩余内容
     # do extra blank lines to wipe the remaining of last output
@@ -227,7 +229,6 @@ class output:
                 if is_atty:
                     self.parent.refresh(int(time.time()*1000), forced=False)
 
-
         def append(self, value, roll=True):
             global is_atty
             global title_msg_lines
@@ -235,7 +236,8 @@ class output:
             with self.lock:
                 super(output.SignalList, self).append(value)
                 if not roll:
-                    newlist=self[:title_msg_lines] + [value] + self[title_msg_lines:-1]
+                    newlist = self[:title_msg_lines] + \
+                        [value] + self[title_msg_lines:-1]
                     if six.PY2:
                         self[:] = []
                     else:
@@ -278,7 +280,6 @@ class output:
                 super(output.SignalList, self).sort(*args, **kwargs)
                 if is_atty:
                     self.parent.refresh(int(time.time()*1000), forced=False)
-
 
     class SignalDict(dict):
 
@@ -347,15 +348,16 @@ class output:
         global is_atty
         global title_msg_lines
         global refresh_lines
-        # reprint does not work in the IDLE terminal, and any other environment that can't get terminal_size
+        # reprint does not work in the IDLE terminal, and any other environment
+        # that can't get terminal_size
         if is_atty and not all(get_terminal_size()):
             if not no_warning:
-                r = input("Fail to get terminal size, we got {}, continue anyway? (y/N)".format(get_terminal_size()))
-                if not (r and isinstance(r, str) and r.lower()[0] in ['y','t','1']):
+                r = input(
+                    "Fail to get terminal size, we got {}, continue anyway? (y/N)".format(get_terminal_size()))
+                if not (r and isinstance(r, str) and r.lower()[0] in ['y', 't', '1']):
                     sys.exit(0)
 
             is_atty = False
-
 
         if output_type == "list":
             self.warped_obj = output.SignalList(self, [''] * initial_len)
@@ -370,14 +372,17 @@ class output:
 
     def refresh(self, new_time=0, forced=True, flush=True):
         if new_time - self._last_update >= self.interval or forced:
-            print_multi_line(self.warped_obj, self.force_single_line, flush=flush)
+            print_multi_line(
+                self.warped_obj, self.force_single_line, flush=flush)
             self._last_update = new_time
 
     def __enter__(self):
+        print("\033[?25l", end="")
         global is_atty
         if not is_atty:
             if not self.no_warning:
-                print("Not in terminal, reprint now using normal build-in print function.")
+                print(
+                    "Not in terminal, reprint now using normal build-in print function.")
 
         return self.warped_obj
 
@@ -385,3 +390,4 @@ class output:
         global is_atty
         self.refresh(forced=True, flush=False)
         print(" ", end="")
+        print("\033[?25h", end="")
