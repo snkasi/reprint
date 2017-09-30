@@ -67,8 +67,7 @@ def preprocess(content):
         _content = str(content)
 
     _content = re.sub(r'\r|\t|\n', ' ', _content)
-    return ' ' + _content
-    # return _content
+    return _content
 
 
 def cut_off_at(content, width):
@@ -389,5 +388,4 @@ class output:
     def __exit__(self, exc_type, exc_val, exc_tb):
         global is_atty
         self.refresh(forced=True, flush=False)
-        print(" ", end="")
         print("\033[?25h", end="")
