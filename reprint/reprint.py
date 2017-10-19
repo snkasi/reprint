@@ -182,7 +182,8 @@ def print_multi_line(content, force_single_line, flush=True, finish=False):
         lines = lines_of_content(content, columns)
 
     if isinstance(content, list):
-        if lines_of_content(content, rows) > rows - 1 and finish is False:
+        length = lines_of_content(content, rows)
+        if length > rows - 1 and finish is False:
             show_lag = 2
             time_num = int((int(time.time()) / show_lag) % (length - rows + 2))
             content = content[time_num:time_num + rows - 1]
