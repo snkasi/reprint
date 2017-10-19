@@ -16,11 +16,13 @@ else:
     from shutil import get_terminal_size
     from builtins import input
 
+
 last_output_lines = 0
 overflow_flag = False
 is_atty = sys.stdout.isatty()
 title_msg_lines = 0
 refresh_lines = 0
+prefix_char = " "
 
 magic_char = "\x1b[1A"
 
@@ -53,6 +55,7 @@ def preprocess(content):
     do pre-process to the content, turn it into str (for py3), and replace \r\t\n with space
     """
 
+    global prefix_char
     if six.PY2:
         if not isinstance(content, unicode):
             if isinstance(content, str):
@@ -67,7 +70,7 @@ def preprocess(content):
         _content = str(content)
 
     _content = re.sub(r'\r|\t|\n', ' ', _content)
-    return _content
+    return prefix_char + _content
 
 
 def cut_off_at(content, width):
@@ -122,7 +125,7 @@ def lines_of_content(content, width):
     return int(result)
 
 
-def print_multi_line(content, force_single_line, flush=True):
+def print_multi_line(content, force_single_line, flush=True, finish=False):
 
     global last_output_lines
     global overflow_flag
@@ -154,7 +157,9 @@ def print_multi_line(content, force_single_line, flush=True):
         lines = lines_of_content(content, columns)
         if force_single_line is False and lines > rows - 1:
             overflow_flag = True
-            for boundary in range(title_msg_lines + 1, len(content) + 1):
+            success_flag = False
+            length = len(content)
+            for boundary in range(title_msg_lines + 1, length + 1):
                 if lines_of_content(content[:title_msg_lines] + content[boundary:], columns) <= rows - 1:
                     for line in content[title_msg_lines:boundary]:
                         _line = preprocess(line)
@@ -162,13 +167,26 @@ def print_multi_line(content, force_single_line, flush=True):
                     content = content[:title_msg_lines] + content[boundary:]
                     lines = lines_of_content(content, columns)
                     refresh_lines += boundary - title_msg_lines
+                    success_flag = True
                     break
-        elif force_single_line is True and len(content) > rows:
+                if not success_flag:
+                    for line in content[title_msg_lines:]:
+                        _line = preprocess(line)
+                        print_line(_line, columns, force_single_line)
+                    content = content[:title_msg_lines]
+                    lines = lines_of_content(content, columns)
+                    refresh_lines += length - title_msg_lines
+        elif force_single_line is True and lines_of_content(content, rows) > rows:
             overflow_flag = True
     else:
         lines = lines_of_content(content, columns)
 
     if isinstance(content, list):
+        if lines_of_content(content, rows) > rows - 1 and finish is False:
+            show_lag = 2
+            time_num = int((int(time.time()) / show_lag) % (length - rows + 2))
+            content = content[time_num:time_num + rows - 1]
+            lines = lines_of_content(content, columns)
         for line in content:
             _line = preprocess(line)
             print_line(_line, columns, force_single_line)
@@ -369,23 +387,24 @@ class output:
         self.force_single_line = force_single_line
         self._last_update = int(time.time()*1000)
 
-    def refresh(self, new_time=0, forced=True, flush=True):
+    def refresh(self, new_time=0, forced=True, flush=True, finish=False):
         if new_time - self._last_update >= self.interval or forced:
             print_multi_line(
-                self.warped_obj, self.force_single_line, flush=flush)
+                self.warped_obj, self.force_single_line, flush=flush, finish=finish)
             self._last_update = new_time
 
     def __enter__(self):
         print("\033[?25l", end="")
         global is_atty
+        global last_output_lines
+        last_output_lines = 0
         if not is_atty:
             if not self.no_warning:
                 print(
                     "Not in terminal, reprint now using normal build-in print function.")
-
         return self.warped_obj
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         global is_atty
-        self.refresh(forced=True, flush=False)
+        self.refresh(forced=True, flush=False, finish=True)
         print("\033[?25h", end="")
