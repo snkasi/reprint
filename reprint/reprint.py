@@ -176,17 +176,23 @@ def print_multi_line(content, force_single_line, flush=True, finish=False):
                     content = content[:title_msg_lines]
                     lines = lines_of_content(content, columns)
                     refresh_lines += length - title_msg_lines
-        elif force_single_line is True and lines_of_content(content, rows) > rows:
+        elif force_single_line is True and lines_of_content(content, columns) > rows:
             overflow_flag = True
     else:
         lines = lines_of_content(content, columns)
 
     if isinstance(content, list):
-        length = lines_of_content(content, rows)
-        if length > rows - 1 and finish is False:
+        length_content = lines_of_content(content, columns)
+        if length_content > rows - 1 and finish is False:
             show_lag = 2
-            time_num = int((int(time.time()) / show_lag) % (length - rows + 2))
-            content = content[time_num:time_num + rows - 1]
+            time_num = int((int(time.time()) / show_lag) % len(content))
+            _content = content
+            for boundary in range(time_num, time_num + len(content)):
+                if lines_of_content((content + content)[time_num:boundary], columns) > rows - 1:
+                    break
+                else:
+                    _content = (content + content)[time_num:boundary]
+            content = _content
             lines = lines_of_content(content, columns)
         for line in content:
             _line = preprocess(line)
