@@ -413,5 +413,6 @@ class output:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         global is_atty
+        global prefix_char
         self.refresh(forced=True, flush=False, finish=True)
-        print("\033[?25h", end="")
+        print("\033[?25h", end=prefix_char)
