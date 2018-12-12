@@ -235,7 +235,7 @@ class output:
                 else:
                     self.parent.refresh(int(time.time()*1000), forced=False)
 
-        def clear():
+        def clear(self):
             global is_atty
             with self.lock:
                 if six.PY2:
@@ -270,23 +270,23 @@ class output:
                     title_msg_lines += 1
                     refresh_lines += 1
                 if not is_atty:
-                    print("{}".format(x))
+                    print("{}".format(value))
                 else:
                     self.parent.refresh(int(time.time()*1000), forced=False)
 
-        def insert(self, i, x):
+        def insert(self, i, value):
             global is_atty
             with self.lock:
-                super(output.SignalList, self).insert(i, x)
+                super(output.SignalList, self).insert(i, value)
                 if not is_atty:
-                    print("{}".format(x))
+                    print("{}".format(value))
                 else:
                     self.parent.refresh(int(time.time()*1000), forced=False)
 
-        def remove(self, x):
+        def remove(self, value):
             global is_atty
             with self.lock:
-                super(output.SignalList, self).remove(i, x)
+                super(output.SignalList, self).remove(value)
                 if is_atty:
                     self.parent.refresh(int(time.time()*1000), forced=False)
 
